@@ -15,17 +15,6 @@ $token = $_SESSION['token'];
 if (empty($_SESSION['token'])) {
     $_SESSION['token'] = bin2hex(random_bytes(32));
 }
-if (isset($_cookie["token"])) {
-    delete_cookie();
-    set_cookie($token);
-}
-if (!isset($_COOKIE["token"])) {
-    set_cookie($token);
-}
-$conn->query(
-    "INSERT INTO `CSRF`(`token`) 
-                                        VALUES ('$token');"
-)
 ?>
 <html>
 <head>
@@ -69,14 +58,8 @@ $conn->query(
     </form>
     <hr/>
     <?php
-    $cookie_token = $_COOKIE["token"];
-    $database_token = $conn->query("SELECT token FROM `CSRF`");
-    foreach ($database_token as $token) {
-        $database_token = $token['token'];
-    }
-
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        if ($database_token === $cookie_token) {
+        if ($_POST['token'] === $token) {
             $email = $_POST['email'];
             $text = $_POST['text'];
             $admin = userIsAdmin($conn);
@@ -113,16 +96,6 @@ $conn->query(
             }
         }
         return false;
-    }
-
-    function set_cookie($token)
-    {
-        setcookie("token", $token, time() + (86400 * 30), "/");
-    }
-
-    function delete_cookie()
-    {
-        setcookie("token", "", time(), -3600);
     }
 
     ?>
