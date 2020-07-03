@@ -5,13 +5,27 @@ $servername = "127.0.0.1";
 $username = "root"; // PAS DEZE AAN ALS DAT NODIG IS
 $password = ""; // PAS DEZE AAN ALS DAT NODIG IS
 $db = "leaky_guest_book";
-
 $conn;
 try {
     $conn = new PDO("mysql:host=$servername;dbname=$db", $username, $password);
 } catch (Exception $e) {
     die("Failed to open database connection, did you start it and configure the credentials properly?");
 }
+$token = $_SESSION['token'];
+if (empty($_SESSION['token'])) {
+    $_SESSION['token'] = bin2hex(random_bytes(32));
+}
+if (isset($_cookie["token"])){
+    delete_cookie();
+    set_cookie($token);
+}
+if (!isset($_COOKIE["token"])){
+    set_cookie($token);
+}
+$conn->query(
+"INSERT INTO `CSRF`(`token`) 
+                                        VALUES ('$token');"
+)
 ?>
 <html>
 <head>
@@ -48,31 +62,29 @@ try {
         <input type="hidden" value="red" name="color">
         Bericht: <textarea name="text" minlength="4"></textarea><br/>
         <?php if (userIsAdmin($conn)) {
-            $admin = true;
             echo "<input type\"hidden\" name=\"admin\" value=" . $_COOKIE['admin'] . "\">";
         } ?>
+        <input type="hidden" name="token" value="<?php echo $token; ?>">
         <input type="submit">
     </form>
     <hr/>
     <?php
+    $cookie_token = $_COOKIE["token"];
+    $database_token = $conn->query("SELECT token FROM `CSRF`");
+    foreach($database_token as $token){
+        $database_token = $token['token'];
+    }
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-//        checks voor een geldig email adress
-        if (filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
-            $email = htmlspecialchars($_POST['email']);
-            $text = htmlspecialchars($_POST['text']);
+        if ($database_token === $cookie_token) {
+            $email = $_POST['email'];
+            $text = $_POST['text'];
             $admin = userIsAdmin($conn);
-            echo(userIsAdmin($conn));
-            if ($admin) {
-                $color = $_POST['color'];
-            } else {
-                $color = "red";
-            }
+            $color = $_POST['color'];
             $conn->query(
                 "INSERT INTO `entries`(`email`, `color`, `admin`, `text`) 
                                         VALUES ('$email', '$color', '$admin', '$text');"
             );
-        } else {
-            die('geef een geldig email adress');
         }
     }
 
@@ -101,6 +113,13 @@ try {
             }
         }
         return false;
+    }
+
+    function set_cookie($token){
+        setcookie("token", $token, time() + (86400 * 30), "/");
+    }
+    function delete_cookie(){
+        setcookie("token","",time(),-3600);
     }
 
     ?>

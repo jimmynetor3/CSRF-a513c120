@@ -18,3 +18,9 @@ CREATE TABLE `admin_cookies`
 );
 
 INSERT INTO  `admin_cookies`(`cookie`) VALUES ('super_secret');
+
+CREATE TABLE `CSRF`
+(
+    `token` VARCHAR(255) NOT NULL
+);
+
